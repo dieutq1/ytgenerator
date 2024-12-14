@@ -1,0 +1,97 @@
+﻿@inject IDataServices Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@page "/auth/login"
+
+@rendermode InteractiveWebAssembly
+
+<div class="flex justify-center items-center h-[90vh] bg-background">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+
+        <!-- Title -->
+        <h2 class="text-center text-xl font-bold text-primary mb-6">Đăng nhập để sử dụng hệ thống</h2>
+
+        <!-- Email Input -->
+        <div class="mb-4">
+            <label class="block text-sm text-gray-600 mb-2">Email</label>
+            <input @bind="Email" type="email" placeholder="Enter your email"
+                   class="w-full px-4 py-2 border border-accent rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <!-- Password Input -->
+        <div class="mb-2">
+            <label class="block text-sm text-gray-600 mb-2">Password</label>
+            <input @bind="Password" type="password" placeholder="Enter your password"
+                   class="w-full px-4 py-2 border border-accent rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <div class="flex justify-end mb-2">
+            <a href="/auth/register" class="text-sm text-primary hover:underline">Bạn chưa đăng ký?</a>
+        </div>
+
+        <!-- Login Button -->
+        <button @onclick="LoginUser" class="w-full bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition">
+            Login
+        </button>
+
+        <!-- Error Message -->
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <p class="text-red-500 text-sm mt-4 text-center">@Message</p>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <p>@Message</p>
+}
+
+@code {
+    private string Email = "";
+    private string Password = "";
+    private string Message = "";
+
+    private async Task LoginUser()
+    {
+        try
+        {
+            var response = await Http.LoginAsync(new Shared.Requests.UserLoginRequest()
+                {
+                    Email = Email,
+                    Password = Password
+                });
+
+            Console.WriteLine(response.Message);
+            if (response.IsSucceeded)
+            {
+                Message = response.Message;
+                // Store the token (in localStorage or sessionStorage)
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", response.Token);
+
+                // Notify the AuthenticationStateProvider
+                ((CustomAuthenticationStateProvider)AuthenticationStateProvider).NotifyUserAuthentication(response.Token);
+
+                // Redirect to home or another page
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                Message = response.Message;
+            }
+        }
+        catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            Message = "Email hoặc mật khẩu không đúng!";
+        }
+        catch (ApiException ex)
+        {
+            Message = ex.Content!;
+
+            // Handle other API errors
+            Console.WriteLine($"API error: {ex.StatusCode} - {ex.Content}");
+        }
+
+    }
+}

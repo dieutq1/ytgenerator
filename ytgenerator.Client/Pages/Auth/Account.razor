@@ -1,0 +1,85 @@
+﻿@page "/auth/account"
+@using ytgenerator.Shared.Dtos
+@inject IDataServices Http
+@inject NavigationManager Navigation
+@rendermode InteractiveWebAssembly
+
+<div class="bg-white mt-10 p-6 rounded shadow-md max-w-md mx-auto bg-background">
+    <form @onsubmit="HandleSubmit">
+        <!-- Name -->
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+            <input id="name" @bind="UserInfo.Name" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <!-- Email -->
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700">Email</label>
+            <input disabled id="name" @bind="UserInfo.Email" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <!-- ChatGPT Key -->
+        <div class="mb-4">
+            <label for="chatgptKey" class="block text-sm font-medium text-gray-700">ChatGPT Key</label>
+            <input id="chatgptKey" @bind="UserInfo.OpenaiKey" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <!-- Mapify Key -->
+        <div class="mb-4">
+            <label for="mapifyKey" class="block text-sm font-medium text-gray-700">Mapify Key</label>
+            <input id="mapifyKey" @bind="UserInfo.MapifyKey" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <!-- Google Drive Key -->
+        <div class="mb-4">
+            <label for="googleDriveKey" class="block text-sm font-medium text-gray-700">Google Drive Key</label>
+            <input id="googleDriveKey" @bind="UserInfo.GoogleDriveKey" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition">
+            Save Changes
+        </button>
+    </form>
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p class="text-green-500 mt-4 text-center">@Message</p>
+    }
+</div>
+
+@code {
+    private UserInfo UserInfo = new();
+    private string Message;
+
+    protected override async Task OnInitializedAsync()
+    {
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            UserInfo = await Http.GetUserInfo();
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        Message = "UserInfo updated successfully!";
+        // Update UserInfo data via the API
+        // var success = await Http.UpdateUserInfoAsync(UserInfo);
+
+        // if (success)
+        // {
+        //     Message = "UserInfo updated successfully!";
+        // }
+        // else
+        // {
+        //     Message = "Failed to update UserInfo. Please try again.";
+        // }
+    }
+}
+

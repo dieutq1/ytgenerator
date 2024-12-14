@@ -1,0 +1,242 @@
+﻿@page "/"
+@page "/process"
+@using ytgenerator.Shared.Dtos
+@inject IDataServices Http
+@inject NavigationManager Navigation
+@rendermode InteractiveWebAssembly
+
+<div class="max-w-4xl mx-auto mt-10 p-6 bg-backgroud shadow-lg rounded-lg">
+    @* <h2 class="text-2xl font-bold text-primary mb-6">YouTube Outline Generator</h2> *@
+
+    <!-- Input Section -->
+    <div class="mb-6">
+        <label for="youtubeLinks" class="block text-sm font-medium text-gray-700 mb-2">
+            Enter YouTube links (one per line):
+        </label>
+        <textarea id="youtubeLinks" @bind="LinksInput" class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" rows="4"
+                  placeholder="https://www.youtube.com/watch?v=example1&#10"></textarea>
+    </div>
+
+    <!-- Button Section -->
+    <div class="flex justify-end mb-6">
+        <button class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-secondary transition"
+                @onclick="HandleGenerateOutline">
+            Lấy dàn ý
+        </button>
+    </div>
+
+    <!-- Results Section -->
+    @if (Outlines != null && Outlines.Any())
+    {
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">Danh sách dàn ý:</h3>
+
+            <!-- Select All Checkbox -->
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="selectAll" checked="@IsAllSelected" @onchange="ToggleSelectAll" />
+                <label for="selectAll" class="ml-2 text-sm font-medium text-gray-700">Chọn tất cả</label>
+            </div>
+
+            <!-- Individual Outlines -->
+            <div class="space-y-6">
+                @foreach (var outline in Outlines)
+                {
+                    <div class="p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-lg font-bold text-primary">@outline.Title</h4>
+                            <input type="checkbox" class="w-5 h-5 text-primary focus:ring-primary" checked="@outline.IsSelected" @onchange="(e) => ToggleOutlineSelection(outline, e)" />
+                        </div>
+                        <div class="space-y-4">
+                            @foreach (var section in outline.Sections)
+                            {
+                                <div>
+                                    <h5 class="text-base font-semibold text-gray-800 mb-2">@(section.Title)</h5>
+                                    <ul class="pl-5 space-y-2">
+                                        @foreach (var subsection in section.Subsections)
+                                        {
+                                            <li class="flex items-center">
+                                                <svg class="w-4 h-4 text-primary mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4" />
+                                                </svg>
+                                                <span class="text-sm text-gray-700">
+                                                    <strong>@subsection.Subtitle:</strong> <em>@subsection.TimeRange</em>
+                                                </span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+
+            <!-- Action Buttons -->
+            @if (Outlines.Any(o => o.IsSelected))
+            {
+                <div class="flex justify-end space-x-4 mt-8">
+                    <button class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                            @onclick="WriteContent">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Viết nội dung</span>
+                    </button>
+                    <button class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center space-x-2"
+                            @onclick="WriteOutline">
+                        <i class="fas fa-list-alt"></i>
+                        <span>Tạo lại dàn bài</span>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+    @* // Content generated here *@
+    @if (Contents != null && Contents.Any())
+    {
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">Nội dung đã tạo:</h3>
+
+            <div class="space-y-6">
+                @foreach (var content in Contents)
+                {
+                    <div class="p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition">
+                        <h4 class="text-lg font-bold text-primary">@content.Title</h4>
+                        <div class="space-y-4">
+                            <div class="flex items-center mt-4 space-x-2">
+                                <a href="@content.FilePath" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 transition flex items-center text-sm">
+                                    <i class="fas fa-video mr-2"></i> Content video
+                                </a>
+                                <a href="@content.FilePathSeo" class="bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 transition flex items-center text-sm">
+                                    <i class="fas fa-file-alt mr-2"></i> Bài viết chuẩn SEO
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+<!-- Full-screen Loader -->
+@if (IsLoading)
+{
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="flex flex-col items-center">
+            <div class="loader"></div>
+            <p class="mt-4 text-white font-semibold">Đang xử lý...</p>
+        </div>
+    </div>
+}
+
+@code {
+    private string LinksInput = string.Empty;
+    private List<VideoOutline> Outlines = new();
+    private List<GenerateDocxDto> Contents = new();
+
+    private bool IsAllSelected = false;
+    private bool IsLoading = false;
+
+    private async Task HandleGenerateOutline()
+    {
+        Outlines.Clear();
+        Contents.Clear();
+        IsAllSelected = false;
+
+        if (string.IsNullOrWhiteSpace(LinksInput))
+        {
+            return;
+        }
+
+        var links = LinksInput.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        IsLoading = true; // Show loader
+        try
+        {
+            Outlines = await Http.GetOutlines(links);
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false; // Hide loader
+        }
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        IsAllSelected = (bool)e.Value;
+
+        foreach (var outline in Outlines)
+        {
+            outline.IsSelected = IsAllSelected;
+        }
+    }
+
+
+    private void CheckSelection()
+    {
+        IsAllSelected = Outlines.All(o => o.IsSelected);
+    }
+
+    private void ToggleOutlineSelection(VideoOutline outline, ChangeEventArgs e)
+    {
+        outline.IsSelected = (bool)e.Value;
+        CheckSelection(); // Recheck if "Select All" should be updated
+    }
+
+    private async Task WriteContent()
+    {
+        var selectedOutlines = Outlines.Where(o => o.IsSelected).ToList();
+
+        IsLoading = true; // Show loader
+        try
+        {
+            Contents = await Http.GenerateContentDocx(selectedOutlines);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false; // Hide loader
+        }
+    }
+
+    /// <summary>
+    /// Viết lại dàn bài sau khi review
+    /// </summary>
+    /// <returns></returns>
+    private async Task WriteOutline()
+    {
+        var selectedOutlines = Outlines.Where(o => o.IsSelected).ToList();
+
+        IsLoading = true; // Show loader
+        try
+        {
+            var newOutLine = await Http.GenerateNewOutline(selectedOutlines);
+
+            // Update the current outlines
+            foreach (var outline in Outlines)
+            {
+                var newOutline = newOutLine.FirstOrDefault(o => o.Title == outline.Title);
+                if (newOutline != null)
+                {
+                    outline.Sections = newOutline.Sections;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+        finally
+        {
+            IsLoading = false; // Hide loader
+        }
+    }
+}
