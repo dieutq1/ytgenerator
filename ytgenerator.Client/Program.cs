@@ -13,6 +13,7 @@ namespace ytgenerator.Client
         static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
             builder.Services.AddBlazoredLocalStorage();
 
             builder.Services.AddScoped<AuthInterceptor>();

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  ytgenerator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      DB_CONNECTION_STRING: "YourDatabaseConnectionStringHere"
+      PYURL: "http://localhost:5000/api"
+      JWT_KEY: "123456789@0987654321-very-strong-key-well-welloooppooopppppppppp"
+      JWT_ISSUER: "http://localhost:5078"
+      JWT_AUDIENCE: "http://localhost:3000"
+      BASE_URL: "http://localhost:5078"
+    restart: unless-stopped
